@@ -1,0 +1,25 @@
+{
+  "name": "email-deep-validator",
+  "version": "1.0.0",
+  "description": "Verify email address checking MX records, and SMTP connection.",
+  "main": "lib/index.js",
+  "scripts": {
+    "autotest": "node_modules/.bin/supervisor -q -n exit -x node_modules/.bin/mocha -- -b",
+    "test": "node_modules/.bin/mocha test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/getconversio/email-deep-verification.git"
+  },
+  "author": "Stefano Sala <stefano@conversio.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/getconversio/email-deep-verification/issues"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^3.2.0",
+    "sinon": "^1.17.6",
+    "supervisor": "^0.12.0"
+  }
+}

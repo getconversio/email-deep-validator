@@ -1,0 +1,48 @@
+{
+  "extends": "airbnb-base",
+  "env": {
+    "node": true,
+    "es6": true
+  },
+  "globals": {
+    "fetch": true,
+    "Headers": true
+  },
+  "rules": {
+    "arrow-parens": ["error", "as-needed"],
+    "arrow-body-style": "off",
+    "class-methods-use-this": "warn",
+    "comma-dangle": ["error", "never"],
+    "consistent-return": "off",
+    "default-case": "off",
+    "func-names": "off",
+    "generator-star-spacing": ["error", { "before": true, "after": true }],
+    "guard-for-in": "warn",
+    "no-case-declarations": "warn",
+    "no-confusing-arrow": "off",
+    "no-continue": "off",
+    "no-extra-boolean-cast": "warn",
+    "no-mixed-operators": "warn",
+    "no-param-reassign": "off",
+    "no-path-concat": "off",
+    "no-plusplus": "off",
+    "no-prototype-builtins": "warn",
+    "no-restricted-syntax": "warn",
+    "no-return-assign": "off",
+    "no-shadow": "off",
+    "no-underscore-dangle": "off",
+    "no-var": "warn",
+    "object-property-newline": "warn",
+    "object-shorthand": "warn",
+    "operator-assignment": "warn",
+    "one-var": "off",
+    "padded-blocks": "warn",
+    "prefer-arrow-callback": "warn",
+    "prefer-rest-params": "warn",
+    "prefer-spread": "warn",
+    "prefer-template": "off",
+    "space-before-function-paren": ["error", "never"],
+    "strict": "off",
+    "import/no-dynamic-require": "off"
+  }
+}
