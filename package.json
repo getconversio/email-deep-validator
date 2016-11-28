@@ -9,12 +9,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/getconversio/email-deep-verification.git"
+    "url": "git+https://github.com/getconversio/email-deep-validation.git"
   },
   "author": "Stefano Sala <stefano@conversio.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/getconversio/email-deep-verification/issues"
+    "url": "https://github.com/getconversio/email-deep-validation/issues"
   },
   "devDependencies": {
     "chai": "^3.5.0",
