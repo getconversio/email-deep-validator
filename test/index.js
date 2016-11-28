@@ -14,6 +14,7 @@ describe('lib/index', () => {
   beforeEach(() => {
     self.sandbox = sinon.sandbox.create();
     self.verifier = new EmailVerifier();
+    self.defaultOptions = new EmailVerifier().options;
   });
 
   afterEach(() => self.sandbox.restore());
@@ -27,10 +28,90 @@ describe('lib/index', () => {
       ]);
   };
 
+  const stubSocket = () => {
+    self.socket = new net.Socket({ });
+
+    self.sandbox.stub(self.socket, 'write', function(data) {
+      if (!data.includes('QUIT')) this.emit('data', '250 Foo');
+    });
+
+    self.connectStub = self.sandbox.stub(net, 'connect')
+      .returns(self.socket);
+  };
+
   describe('constructor', () => {
     it('should create an instance of EmailVerifier', () => {
       const verifier = new EmailVerifier();
       verifier.should.be.an.instanceof(EmailVerifier);
+      verifier.options.should.deep.equal(self.defaultOptions);
+    });
+
+    it('should be possible to override options', () => {
+      const verifier = new EmailVerifier({ timeout: 5000 });
+      verifier.options.timeout.should.equal(5000);
+      verifier.options.verifyMxRecords.should.equal(self.defaultOptions.verifyMxRecords);
+    });
+  });
+
+  describe('verify', () => {
+    beforeEach(() => {
+      stubResolveMx();
+      stubSocket();
+    });
+
+    it('should perform all tests', () => {
+      setTimeout(() => self.socket.write('250 Foo'), 10);
+
+      return self.verifier.verify('foo@bar.com')
+        .then(() => {
+          sinon.assert.called(self.resolveMxStub);
+          sinon.assert.called(self.connectStub);
+        });
+    });
+
+    context('given no mx records', () => {
+      beforeEach(() => {
+        self.resolveMxStub.yields(null, []);
+      });
+
+      it('should throw an error', () => {
+        return self.verifier.verify('foo@bar.com')
+          .then(() => Promise.reject('You shall not pass!'))
+          .catch(err => err.should.be.an.instanceof(Error));
+      });
+    });
+
+    context('given a verifySmtpConnection option false', () => {
+      beforeEach(() => {
+        self.verifier = new EmailVerifier({
+          verifySmtpConnection: false
+        });
+      });
+
+      it('should not check via socket', () => {
+        return self.verifier.verify('foo@bar.com')
+          .then(() => {
+            sinon.assert.called(self.resolveMxStub);
+            sinon.assert.notCalled(self.connectStub);
+          });
+      });
+    });
+
+    context('given a verifyMxRecords option false', () => {
+      beforeEach(() => {
+        self.verifier = new EmailVerifier({
+          verifyMxRecords: false,
+          verifySmtpConnection: false
+        });
+      });
+
+      it('should not check via socket', () => {
+        return self.verifier.verify('foo@bar.com')
+          .then(() => {
+            sinon.assert.notCalled(self.resolveMxStub);
+            sinon.assert.notCalled(self.connectStub);
+          });
+      });
     });
   });
 
@@ -72,15 +153,7 @@ describe('lib/index', () => {
   describe('checkViaSmtp', () => {
     beforeEach(() => {
       stubResolveMx();
-
-      self.socket = new net.Socket({ });
-
-      self.sandbox.stub(self.socket, 'write', function(data) {
-        if (!data.includes('QUIT')) this.emit('data', '250 Foo');
-      });
-
-      self.connectStub = self.sandbox.stub(net, 'connect')
-        .returns(self.socket);
+      stubSocket();
     });
 
     it('should resolve for a valid address', () => {
@@ -114,6 +187,7 @@ describe('lib/index', () => {
       setTimeout(() => socket.write('250 Foo'), 10);
 
       return self.verifier.checkViaSmtp('bar@foo.com')
+        .then(() => Promise.reject('You shall not pass!'))
         .catch(err => err.should.be.an.instanceof(Error));
     });
   });
