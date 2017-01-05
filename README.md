@@ -14,16 +14,16 @@ Install the module through NPM:
 
 ## Examples
 
-Include the module, create a new `EmailValidator` object and call `validate` method:
+Include the module, create a new `EmailValidator` object and call `verify` method:
 
 ```javascript
 const EmailValidator = require('email-deep-validator');
 
 const emailValidator = new EmailValidator();
-emailValidator.validate('foo@email.com')
+emailValidator.verify('foo@email.com')
   .then(() => console.log('Email is valid.');
 
-emailValidator.validate('non-existent@email.com')
+emailValidator.verify('non-existent@email.com')
   .catch(err => console.log('Email is not valid', err.message));
 ```
 
