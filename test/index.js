@@ -7,6 +7,7 @@ const chai = require('chai'),
   EmailValidator = require('../lib');
 
 chai.should();
+const should = chai.expect;
 
 describe('lib/index', () => {
   const self = { };
@@ -19,12 +20,12 @@ describe('lib/index', () => {
 
   afterEach(() => self.sandbox.restore());
 
-  const stubResolveMx = () => {
+  const stubResolveMx = (domain = 'foo.com') => {
     self.resolveMxStub = self.sandbox.stub(dns, 'resolveMx')
       .yields(null, [
-        { exchange: 'mx1.foo.com', priority: 30 },
-        { exchange: 'mx2.foo.com', priority: 10 },
-        { exchange: 'mx3.foo.com', priority: 20 }
+        { exchange: `mx1.${domain}`, priority: 30 },
+        { exchange: `mx2.${domain}`, priority: 10 },
+        { exchange: `mx3.${domain}`, priority: 20 }
       ]);
   };
 
@@ -39,7 +40,7 @@ describe('lib/index', () => {
       .returns(self.socket);
   };
 
-  describe('constructor', () => {
+  describe('.constructor', () => {
     it('should create an instance of EmailValidator', () => {
       const validator = new EmailValidator();
       validator.should.be.an.instanceof(EmailValidator);
@@ -49,11 +50,11 @@ describe('lib/index', () => {
     it('should be possible to override options', () => {
       const validator = new EmailValidator({ timeout: 5000 });
       validator.options.timeout.should.equal(5000);
-      validator.options.verifyMxRecords.should.equal(self.defaultOptions.verifyMxRecords);
+      validator.options.verifyDomain.should.equal(self.defaultOptions.verifyDomain);
     });
   });
 
-  describe('verify', () => {
+  describe('#verify', () => {
     beforeEach(() => {
       stubResolveMx();
       stubSocket();
@@ -63,10 +64,87 @@ describe('lib/index', () => {
       setTimeout(() => self.socket.write('250 Foo'), 10);
 
       return self.validator.verify('foo@bar.com')
-        .then(() => {
+        .then(({ wellFormed, validDomain, validMailbox }) => {
           sinon.assert.called(self.resolveMxStub);
           sinon.assert.called(self.connectStub);
+          should(wellFormed).equal(true);
+          should(validDomain).equal(true);
+          should(validMailbox).equal(true);
         });
+    });
+
+    it('returns immediately if email is malformed invalid', () => {
+      return self.validator.verify('bar.com')
+        .then(({ wellFormed, validDomain, validMailbox }) => {
+          sinon.assert.notCalled(self.resolveMxStub);
+          sinon.assert.notCalled(self.connectStub);
+          should(wellFormed).equal(false);
+          should(validDomain).equal(null);
+          should(validMailbox).equal(null);
+        });
+    });
+
+    describe('mailbox verification', () => {
+      it('returns true when maibox exists', () => {
+        setTimeout(() => self.socket.write('250 Foo'), 10);
+        return self.validator.verify('bar@foo.com')
+          .then(({ validMailbox }) => should(validMailbox).equal(true));
+      });
+
+      it('returns null if mailbox is yahoo', () => {
+        self.resolveMxStub.restore();
+        stubResolveMx('yahoo.com');
+
+        setTimeout(() => self.socket.write('250 Foo'), 10);
+
+        return self.validator.verify('bar@yahoo.com')
+          .then(({ validMailbox }) => should(validMailbox).equal(null));
+      });
+
+      it('should return null on socket error', () => {
+        const socket = {
+          on: (event, callback) => {
+            if (event === 'error') return callback(new Error());
+          },
+          write: () => {},
+          end: () => {}
+        };
+
+        self.connectStub = self.connectStub.returns(socket);
+
+        return self.validator.verify('bar@foo.com')
+          .then(({ validMailbox }) => should(validMailbox).equal(null));
+      });
+
+      it('should return null on unknown SMTP errors', () => {
+        const socket = new net.Socket({ });
+
+        self.sandbox.stub(socket, 'write', function(data) {
+          if (!data.includes('QUIT')) this.emit('data', '500 Foo');
+        });
+
+        self.connectStub.returns(socket);
+
+        setTimeout(() => socket.write('250 Foo'), 10);
+
+        return self.validator.verify('bar@foo.com')
+          .then(({ validMailbox }) => should(validMailbox).equal(null));
+      });
+
+      it('returns false on bad mailbox errors', () => {
+        const socket = new net.Socket({ });
+
+        self.sandbox.stub(socket, 'write', function(data) {
+          if (!data.includes('QUIT')) this.emit('data', '550 Foo');
+        });
+
+        self.connectStub.returns(socket);
+
+        setTimeout(() => socket.write('250 Foo'), 10);
+
+        return self.validator.verify('bar@foo.com')
+          .then(({ validMailbox }) => should(validMailbox).equal(false));
+      });
     });
 
     context('given no mx records', () => {
@@ -74,42 +152,45 @@ describe('lib/index', () => {
         self.resolveMxStub.yields(null, []);
       });
 
-      it('should throw an error', () => {
+      it('should return false on the domain verification', () => {
         return self.validator.verify('foo@bar.com')
-          .then(() => Promise.reject('You shall not pass!'))
-          .catch(err => err.should.be.an.instanceof(Error));
-      });
-    });
-
-    context('given a verifySmtpConnection option false', () => {
-      beforeEach(() => {
-        self.validator = new EmailValidator({
-          verifySmtpConnection: false
-        });
-      });
-
-      it('should not check via socket', () => {
-        return self.validator.verify('foo@bar.com')
-          .then(() => {
-            sinon.assert.called(self.resolveMxStub);
-            sinon.assert.notCalled(self.connectStub);
+          .then(({ validDomain, validMailbox }) => {
+            should(validDomain).equal(false);
+            should(validMailbox).equal(null);
           });
       });
     });
 
-    context('given a verifyMxRecords option false', () => {
+    context('given a verifyMailbox option false', () => {
+      beforeEach(() => {
+        self.validator = new EmailValidator({ verifyMailbox: false });
+      });
+
+      it('should not check via socket', () => {
+        return self.validator.verify('foo@bar.com')
+          .then(({ validMailbox }) => {
+            sinon.assert.called(self.resolveMxStub);
+            sinon.assert.notCalled(self.connectStub);
+            should(validMailbox).equal(null);
+          });
+      });
+    });
+
+    context('given a verifyDomain option false', () => {
       beforeEach(() => {
         self.validator = new EmailValidator({
-          verifyMxRecords: false,
-          verifySmtpConnection: false
+          verifyDomain: false,
+          verifyMailbox: false
         });
       });
 
       it('should not check via socket', () => {
         return self.validator.verify('foo@bar.com')
-          .then(() => {
+          .then(({ validDomain, validMailbox }) => {
             sinon.assert.notCalled(self.resolveMxStub);
             sinon.assert.notCalled(self.connectStub);
+            should(validDomain).equal(null);
+            should(validMailbox).equal(null);
           });
       });
     });
@@ -124,10 +205,6 @@ describe('lib/index', () => {
           records.should.deep.equal(['mx2.foo.com', 'mx3.foo.com', 'mx1.foo.com']);
         });
     });
-
-    it('should return false for an invalid address', () => {
-      (() => EmailValidator.resolveMxRecords('bar.com')).should.throw(Error);
-    });
   });
 
   describe('isEmail', () => {
@@ -140,55 +217,13 @@ describe('lib/index', () => {
     });
   });
 
-  describe('extractDomain', () => {
-    it('should return the domain part of an email address', () => {
-      EmailValidator.extractDomain('foo@bar.com').should.equal('bar.com');
+  describe('extractAddressParts', () => {
+    it('should local + domain parts of an email address', () => {
+      EmailValidator.extractAddressParts('foo@bar.com').should.eql(['foo', 'bar.com']);
     });
 
     it('should throw an error if the email is not valid', () => {
       (() => EmailValidator.extractDomain('foo')).should.throw(Error);
-    });
-  });
-
-  describe('checkViaSmtp', () => {
-    beforeEach(() => {
-      stubResolveMx();
-      stubSocket();
-    });
-
-    it('should resolve for a valid address', () => {
-      setTimeout(() => self.socket.write('250 Foo'), 10);
-
-      return self.validator.checkViaSmtp('bar@foo.com');
-    });
-
-    it('should throw an error on socket error', () => {
-      const socket = {
-        on: (event, callback) => {
-          if (event === 'error') return callback(new Error());
-        }
-      };
-
-      self.connectStub = self.connectStub.returns(socket);
-
-      return self.validator.checkViaSmtp('bar@foo.com')
-        .catch(err => err.should.be.an.instanceof(Error));
-    });
-
-    it('should throw an error on smtp errors', () => {
-      const socket = new net.Socket({ });
-
-      self.sandbox.stub(socket, 'write', function(data) {
-        if (!data.includes('QUIT')) this.emit('data', '550 Foo');
-      });
-
-      self.connectStub.returns(socket);
-
-      setTimeout(() => socket.write('250 Foo'), 10);
-
-      return self.validator.checkViaSmtp('bar@foo.com')
-        .then(() => Promise.reject('You shall not pass!'))
-        .catch(err => err.should.be.an.instanceof(Error));
     });
   });
 });
