@@ -56,7 +56,7 @@ Default: `true`.
 
 Enable or disable mailbox checking. Only a few SMTP servers allow this, and even then whether it works depends on your IP's reputation with those servers. This library performs a best effort validation:
 
-* It returns `null` for Yahoo addresses, for failed connections, for unkown SMTP errors.
+* It returns `null` for Yahoo addresses, for failed connections, for unknown SMTP errors.
 * It returns `true` for valid SMTP responses.
 * It returns `false` for SMTP errors specific to the address's formatting or mailbox existance.
 
