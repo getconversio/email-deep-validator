@@ -10,7 +10,7 @@ Install the module through NPM:
 
     $ npm install email-deep-validator --save
 
-**Requires Node 6 or above**
+**Requires Node 7.6 or above**
 
 ## Examples
 
@@ -20,30 +20,60 @@ Include the module, create a new `EmailValidator` object and call `verify` metho
 const EmailValidator = require('email-deep-validator');
 
 const emailValidator = new EmailValidator();
-emailValidator.verify('foo@email.com')
-  .then(() => console.log('Email is valid.');
-
-emailValidator.verify('non-existent@email.com')
-  .catch(err => console.log('Email is not valid', err.message));
+const { wellDefined, validDomain, validMailbox } = await emailValidator.verify('foo@email.com');
+// wellDefined: true
+// validDomain: true
+// validMailbox: true
 ```
+
+When a domain does not exist or has no MX records, the domain validation will fail, and the mailbox validation will return `null` because it could not be performed:
+
+```javascript
+const { wellDefined, validDomain, validMailbox } = await emailValidator.verify('foo@bad-domain.com');
+// wellDefined: true
+// validDomain: false
+// validMailbox: null
+```
+
+A valid Yahoo domain will still return `validMailbox` true because their SMTP servers do not allow verifying if a mailbox exists.
 
 ## Configuration options
 
-### timeout
+### `timeout`
 
 Set a timeout in seconds for the smtp connection. Default: `10000`.
 
-### verifyMxRecords
+### `verifyDomain`
 
-Enable or disable the check of mx records. Default: `true`.
+Enable or disable domain checking. This is done in two steps:
 
-### verifySmtpConnection
+1. Verify that the domain does indeed exist;
+2. Verify that the domain has valid MX records.
 
-Enable or disable the SMTP check. Default `true`.
+Default: `true`.
+
+### `verifyMailbox`
+
+Enable or disable mailbox checking. Only a few SMTP servers allow this, and even then whether it works depends on your IP's reputation with those servers. This library performs a best effort validation:
+
+* It returns `null` for Yahoo addresses, for failed connections, for unknown SMTP errors.
+* It returns `true` for valid SMTP responses.
+* It returns `false` for SMTP errors specific to the address's formatting or mailbox existance.
+
+Default: `true`.
 
 ## Testing
 
     $ npm test
+
+## Changelog
+
+### 2.0.0
+
+* (BREAKING) Requires node 7.6 for `async`/`await`.
+* (BREAKING) Instead of throwing on any invalidation, the lib now returns an object with which validations failed.
+* (BREAKING) Configuration property `verifyMxRecords` renamed to `verifyDomain`.
+* (BREAKING) Configuration property `verifySmtpConnection` renamed to `verifyMailbox`.
 
 ## Contributing
 
