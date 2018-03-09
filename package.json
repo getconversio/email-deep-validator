@@ -1,6 +1,6 @@
 {
   "name": "email-deep-validator",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Verify email address checking MX records, and SMTP connection.",
   "main": "lib/index.js",
   "scripts": {

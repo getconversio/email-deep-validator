@@ -145,6 +145,22 @@ describe('lib/index', () => {
         return self.validator.verify('bar@foo.com')
           .then(({ validMailbox }) => should(validMailbox).equal(false));
       });
+
+      it('returns null on spam errors', () => {
+        const msg = '550-"JunkMail rejected - ec2-54-74-157-229.eu-west-1.compute.amazonaws.com';
+        const socket = new net.Socket({ });
+
+        self.sandbox.stub(socket, 'write', function(data) {
+          if (!data.includes('QUIT')) this.emit('data', msg);
+        });
+
+        self.connectStub.returns(socket);
+
+        setTimeout(() => socket.write('250 Foo'), 10);
+
+        return self.validator.verify('bar@foo.com')
+          .then(({ validMailbox }) => should(validMailbox).equal(null));
+      });
     });
 
     context('given no mx records', () => {
