@@ -13,7 +13,7 @@ describe('lib/index', () => {
   const self = { };
 
   beforeEach(() => {
-    self.sandbox = sinon.sandbox.create();
+    self.sandbox = sinon.createSandbox();
     self.validator = new EmailValidator();
     self.defaultOptions = new EmailValidator().options;
   });
@@ -32,12 +32,11 @@ describe('lib/index', () => {
   const stubSocket = () => {
     self.socket = new net.Socket({ });
 
-    self.sandbox.stub(self.socket, 'write', function(data) {
+    self.sandbox.stub(self.socket, 'write').callsFake(function(data) {
       if (!data.includes('QUIT')) this.emit('data', '250 Foo');
     });
 
-    self.connectStub = self.sandbox.stub(net, 'connect')
-      .returns(self.socket);
+    self.connectStub = self.sandbox.stub(net, 'connect').returns(self.socket);
   };
 
   describe('.constructor', () => {
@@ -119,7 +118,7 @@ describe('lib/index', () => {
       it('should return null on unknown SMTP errors', () => {
         const socket = new net.Socket({ });
 
-        self.sandbox.stub(socket, 'write', function(data) {
+        self.sandbox.stub(socket, 'write').callsFake(function(data) {
           if (!data.includes('QUIT')) this.emit('data', '500 Foo');
         });
 
@@ -134,7 +133,7 @@ describe('lib/index', () => {
       it('returns false on bad mailbox errors', () => {
         const socket = new net.Socket({ });
 
-        self.sandbox.stub(socket, 'write', function(data) {
+        self.sandbox.stub(socket, 'write').callsFake(function(data) {
           if (!data.includes('QUIT')) this.emit('data', '550 Foo');
         });
 
@@ -150,7 +149,7 @@ describe('lib/index', () => {
         const msg = '550-"JunkMail rejected - ec2-54-74-157-229.eu-west-1.compute.amazonaws.com';
         const socket = new net.Socket({ });
 
-        self.sandbox.stub(socket, 'write', function(data) {
+        self.sandbox.stub(socket, 'write').callsFake(function(data) {
           if (!data.includes('QUIT')) this.emit('data', msg);
         });
 
