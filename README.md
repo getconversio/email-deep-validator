@@ -20,8 +20,8 @@ Include the module, create a new `EmailValidator` object and call `verify` metho
 const EmailValidator = require('email-deep-validator');
 
 const emailValidator = new EmailValidator();
-const { wellDefined, validDomain, validMailbox } = await emailValidator.verify('foo@email.com');
-// wellDefined: true
+const { wellFormed, validDomain, validMailbox } = await emailValidator.verify('foo@email.com');
+// wellFormed: true
 // validDomain: true
 // validMailbox: true
 ```
@@ -29,8 +29,8 @@ const { wellDefined, validDomain, validMailbox } = await emailValidator.verify('
 When a domain does not exist or has no MX records, the domain validation will fail, and the mailbox validation will return `null` because it could not be performed:
 
 ```javascript
-const { wellDefined, validDomain, validMailbox } = await emailValidator.verify('foo@bad-domain.com');
-// wellDefined: true
+const { wellFormed, validDomain, validMailbox } = await emailValidator.verify('foo@bad-domain.com');
+// wellFormed: true
 // validDomain: false
 // validMailbox: null
 ```
