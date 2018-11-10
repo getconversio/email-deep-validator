@@ -115,6 +115,32 @@ describe('lib/index', () => {
           .then(({ validMailbox }) => should(validMailbox).equal(null));
       });
 
+      it('regression: does not write infinitely if there is a socket error', () => {
+        const writeSpy = self.sandbox.spy();
+        const endSpy = self.sandbox.spy();
+
+        const socket = {
+          on: (event, callback) => {
+            if (event === 'error') {
+              return setTimeout(() => {
+                socket.destroyed = true;
+                callback(new Error());
+              }, 100);
+            };
+          },
+          write: writeSpy,
+          end: endSpy
+        };
+
+        self.connectStub = self.connectStub.returns(socket);
+
+        return self.validator.verify('bar@foo.com')
+          .then(() => {
+            sinon.assert.notCalled(writeSpy);
+            sinon.assert.notCalled(endSpy);
+          });
+      })
+
       it('should return null on unknown SMTP errors', () => {
         const socket = new net.Socket({ });
 
