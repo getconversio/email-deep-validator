@@ -115,6 +115,34 @@ describe('lib/index', () => {
           .then(({ validMailbox }) => should(validMailbox).equal(null));
       });
 
+      it('dodges multiline spam detecting greetings', () => {
+        const socket = new net.Socket({ });
+        let greeted = false;
+
+        self.sandbox.stub(socket, 'write').callsFake(function (data) {
+          if (!data.includes('QUIT')) {
+            if (!greeted) return this.emit('data', '550 5.5.1 Protocol Error');
+            this.emit('data', '250 Foo');
+          }
+        });
+
+        self.connectStub.returns(socket);
+
+        setTimeout(() => {
+          // the "-" indicates a multi line greeting
+          socket.emit('data', '220-hohoho');
+
+          // wait a bit and send the rest
+          setTimeout(() => {
+            greeted = true;
+            socket.emit('data', '220 ho ho ho');
+          }, 1000);
+        }, 10);
+
+        return self.validator.verify('bar@foo.com')
+          .then(({ validMailbox }) => should(validMailbox).equal(true));
+      });
+
       it('regression: does not write infinitely if there is a socket error', () => {
         const writeSpy = self.sandbox.spy();
         const endSpy = self.sandbox.spy();
@@ -139,7 +167,7 @@ describe('lib/index', () => {
             sinon.assert.notCalled(writeSpy);
             sinon.assert.notCalled(endSpy);
           });
-      })
+      });
 
       it('should return null on unknown SMTP errors', () => {
         const socket = new net.Socket({ });
