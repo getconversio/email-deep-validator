@@ -214,6 +214,22 @@ describe('lib/index', () => {
         return self.validator.verify('bar@foo.com')
           .then(({ validMailbox }) => should(validMailbox).equal(null));
       });
+
+      it('returns null on spam errors-#2', () => {
+        const msg = '553 5.3.0 flpd575 DNSBL:RBL 521< 54.74.114.115 >_is_blocked.For assistance forward this email to abuse_rbl@abuse-att.net';
+        const socket = new net.Socket({ });
+
+        self.sandbox.stub(socket, 'write').callsFake(function(data) {
+          if (!data.includes('QUIT')) this.emit('data', msg);
+        });
+
+        self.connectStub.returns(socket);
+
+        setTimeout(() => socket.write('250 Foo'), 10);
+
+        return self.validator.verify('bar@foo.com')
+          .then(({ validMailbox }) => should(validMailbox).equal(null));
+      });
     });
 
     context('given no mx records', () => {
