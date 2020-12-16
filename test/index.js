@@ -230,6 +230,24 @@ describe('lib/index', () => {
         return self.validator.verify('bar@foo.com')
           .then(({ validMailbox }) => should(validMailbox).equal(null));
       });
+
+
+      it('returns false on over quota check', () => {
+        const msg = '452-4.2.2 The email account that you tried to reach is over quota. Please direct';
+        const socket = new net.Socket({ });
+
+        self.sandbox.stub(socket, 'write').callsFake(function(data) {
+          if (!data.includes('QUIT')) this.emit('data', msg);
+        });
+
+        self.connectStub.returns(socket); 
+
+        setTimeout(() => socket.write('250 Foo'), 10);
+
+        return self.validator.verify('bar@foo.com')
+          .then(({ validMailbox }) => should(validMailbox).equal(false));
+      });
+
     });
 
     context('given no mx records', () => {
